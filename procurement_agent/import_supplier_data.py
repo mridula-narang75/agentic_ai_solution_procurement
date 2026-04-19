@@ -22,7 +22,7 @@ import pandas as pd
 import os
 import sys
 
-EXCEL_PATH = "procurement_inventory_prices.csv"   # it's actually an xlsx
+EXCEL_PATH = "updated_procurement_inventory_prices.csv"   # it's actually an xlsx
 DB_PATH    = os.path.join("data", "suppliers.db")
 TABLE      = "supplier_catalog"
 
@@ -33,7 +33,7 @@ if not os.path.exists(EXCEL_PATH):
     print("    Run this script from inside procurement_agent/")
     sys.exit(1)
 
-df = pd.read_excel(EXCEL_PATH, engine="openpyxl")
+df = pd.read_csv(EXCEL_PATH) #, engine="openpyxl")
 print(f"      ✓ {len(df)} rows × {len(df.columns)} columns")
 print(f"      Columns: {list(df.columns)}")
 

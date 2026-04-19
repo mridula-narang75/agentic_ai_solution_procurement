@@ -1,0 +1,26 @@
+Supplier,Category,Per Unit Price (USD),Available Discount (%),Delivery Time (days),Stock Availability (units),Production Capacity (units/month),Delivery Feasibility
+Alpha_Inc,Electronics,95.58,10,29,300,1000,High
+Alpha_Inc,MRO,67.07,8,27,500,1500,Medium
+Alpha_Inc,Office Supplies,26.56,5,27,1000,3000,High
+Alpha_Inc,Raw Materials,49.07,7,29,700,2000,Medium
+Alpha_Inc,Packaging,40.15,6,27,1500,4000,High
+Beta_Supplies,Electronics,71,12,25,400,1200,High
+Beta_Supplies,MRO,75.69,10,27,600,1600,High
+Beta_Supplies,Office Supplies,35.16,6,21,1200,3500,High
+Beta_Supplies,Raw Materials,37.72,8,28,800,2200,Medium
+Beta_Supplies,Packaging,37.45,7,21,1800,4500,High
+Delta_Logistics,Electronics,81,9,21,350,900,High
+Delta_Logistics,MRO,43.48,7,29,450,1400,Medium
+Delta_Logistics,Office Supplies,20.8,4,24,900,2800,High
+Delta_Logistics,Raw Materials,50.62,6,21,600,1800,Medium
+Delta_Logistics,Packaging,28.51,5,28,1400,3800,High
+Epsilon_Group,Electronics,78.93,11,30,250,1100,Medium
+Epsilon_Group,MRO,56.88,9,26,550,1700,High
+Epsilon_Group,Office Supplies,25.97,5,30,1100,3200,High
+Epsilon_Group,Raw Materials,58.33,7,23,750,2100,Low
+Epsilon_Group,Packaging,23.89,6,29,1600,4200,Medium
+Gamma_Co,Electronics,99.46,13,22,450,1300,High
+Gamma_Co,MRO,41.19,11,25,650,1800,High
+Gamma_Co,Office Supplies,39.5,7,23,1300,3600,High
+Gamma_Co,Raw Materials,30.23,9,29,850,2300,Medium
+Gamma_Co,Packaging,43.93,8,22,2000,5000,High

@@ -1,0 +1,6 @@
+category,min_order_qty,max_order_qty,target_discount_pct,max_discount_pct,min_acceptable_discount_pct,price_tolerance_pct,max_negotiation_rounds,counter_offer_step_pct,delivery_tolerance_days,priority_weight_price,priority_weight_delivery,priority_weight_quantity,auto_award_threshold_score,walkaway_price_premium_pct
+Electronics,50,5000,12,18,8,5,3,3,3,0.5,0.3,0.2,80,20
+MRO,100,10000,10,15,6,7,3,2,5,0.4,0.35,0.25,75,18
+Office Supplies,200,20000,8,12,4,10,2,2,7,0.45,0.25,0.3,70,15
+Raw Materials,500,50000,9,14,5,8,3,3,5,0.5,0.3,0.2,72,17
+Packaging,300,30000,7,11,3,12,2,2,10,0.4,0.3,0.3,68,15

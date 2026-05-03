@@ -372,3 +372,125 @@ def generate_quote(
         "delivery_feasibility": feasib,
         "formatted_output":     "\n".join(lines),
     }
+
+def revise_quote(
+    supplier_name: str,
+    category: str,
+    quantity: int,
+    rfq_id: str,
+    original_quote_id: str,
+    counter_offer_price: float,
+    round_number: int,
+) -> dict:
+    """
+    Supplier responds to a counter-offer from the negotiation agent.
+
+    Args:
+        supplier_name       : Supplier responding to counter-offer.
+        category            : Item category.
+        quantity            : Number of units.
+        rfq_id              : Original RFQ reference.
+        original_quote_id   : Quote ID being revised.
+        counter_offer_price : Price proposed by negotiation agent.
+        round_number        : Current negotiation round (1, 2, or 3).
+
+    Returns:
+        {
+          status              : "accepted" | "halfway" | "firm"
+          supplier            : str
+          round_number        : int
+          revised_quote_id    : str
+          revised_price       : float
+          quoted_price_per_unit: float
+          discount_applied_pct: int
+          total_quoted_price  : float
+          delivery_days_committed: int
+          quantity_offered    : int
+          remarks             : str
+          formatted_output    : str
+        }
+    """
+    row = _fetch_row(supplier_name, category)
+    if not row:
+        return {
+            "status":  "not_found",
+            "message": f"No catalog entry for {supplier_name} / {category}.",
+        }
+
+    unit_price   = float(row["per_unit_price_usd"])
+    max_discount = int(row["available_discount"])
+    std_delivery = int(row["delivery_time_days"])
+    feasib       = row["delivery_feasibility"]
+
+    buffer         = FEASIBILITY_BUFFER.get(feasib, 2)
+    effective_days = std_delivery + buffer
+    floor_price    = round(unit_price * (1 - max_discount / 100), 2)
+
+    if counter_offer_price >= floor_price:
+        status        = "accepted"
+        revised_price = counter_offer_price
+        remarks       = (f"Counter-offer accepted at ${revised_price}/unit. "
+                        f"Round {round_number} complete.")
+    elif counter_offer_price >= floor_price * 0.95:
+        status        = "halfway"
+        revised_price = round((unit_price + counter_offer_price) / 2, 2)
+        revised_price = max(revised_price, floor_price)
+        remarks       = (f"Cannot meet ${counter_offer_price}. "
+                        f"Revised to ${revised_price}/unit. "
+                        f"Round {round_number}.")
+    else:
+        status        = "firm"
+        revised_price = floor_price
+        remarks       = (f"Counter-offer below cost floor. "
+                        f"Best price: ${floor_price}/unit. "
+                        f"Round {round_number}.")
+
+    actual_discount = round((1 - revised_price / unit_price) * 100, 1)
+    total_price     = round(revised_price * quantity, 2)
+    revised_qid     = f"QT-R{round_number}-{uuid.uuid4().hex[:6].upper()}"
+
+    lines = []
+    lines.append("---")
+    lines.append(f"## Revised Quote — {supplier_name} (Round {round_number})")
+    lines.append("")
+    status_icon = {"accepted": "✅", "halfway": "⚠️", "firm": "❌"}.get(status, "")
+    lines.append(f"> {status_icon} **Supplier response: {status.upper()}**")
+    lines.append("")
+
+    rows = [
+        ["Revised Quote ID",        revised_qid],
+        ["Original Quote ID",       original_quote_id],
+        ["RFQ Reference",           rfq_id],
+        ["Supplier",                supplier_name],
+        ["Round",                   round_number],
+        ["Counter-offer Price",     f"${counter_offer_price}"],
+        ["Floor Price (minimum)",   f"${floor_price}"],
+        ["**Revised Price / Unit**",f"**${revised_price}**"],
+        ["Discount Applied",        f"{actual_discount}%"],
+        ["Total Quoted Price",      f"${total_price}"],
+        ["Delivery Committed",      f"{effective_days} days"],
+        ["Status",                  status.upper()],
+    ]
+    lines.append(tabulate(rows, headers=["Field", "Value"], tablefmt="pipe"))
+    lines.append("")
+    lines.append(f"> **Remarks:** {remarks}")
+    lines.append("")
+    lines.append("---")
+
+    return {
+        "status":                  status,
+        "supplier":                supplier_name,
+        "round_number":            round_number,
+        "original_quote_id":       original_quote_id,
+        "revised_quote_id":        revised_qid,
+        "revised_price":           revised_price,
+        "quoted_price_per_unit":   revised_price,
+        "discount_applied_pct":    int(actual_discount),
+        "total_quoted_price":      total_price,
+        "delivery_days_committed": effective_days,
+        "quantity_offered":        quantity,
+        "quote_id":                revised_qid,
+        "rfq_id":                  rfq_id,
+        "remarks":                 remarks,
+        "formatted_output":        "\n".join(lines),
+    }

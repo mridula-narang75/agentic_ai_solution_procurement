@@ -1,6 +1,11 @@
 """
-Main agent entry point for Google ADK.
-Exposes root_agent at package level.
+procurement_agent/agent.py
+──────────────────────────
+Main entry point for Google ADK.
+
+Chain: BuyerAgent → SupplierAgent → NegotiationAgent
+Each agent calls the next one as a sub-agent after completing its phase.
+No coordinator needed.
 """
 
 from .agents.buyer_agent import root_agent

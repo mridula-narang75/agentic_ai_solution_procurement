@@ -406,3 +406,75 @@ def generate_award(
         "status":                 "awarded",
         "formatted_output":       "\n".join(lines),
     }
+
+def generate_counter_offer(
+    category: str,
+    supplier_name: str,
+    current_price: float,
+    current_discount_pct: float,
+    round_number: int,
+) -> dict:
+    """
+    Generates a structured counter-offer based on negotiation rules from DB.
+
+    Args:
+        category             : Item category (fetches rules from DB).
+        supplier_name        : Supplier to counter-offer.
+        current_price        : Supplier's current quoted price/unit.
+        current_discount_pct : Discount already applied.
+        round_number         : Current negotiation round (1, 2, or 3).
+
+    Returns:
+        {
+          status               : "counter_needed" | "no_counter_needed"
+          supplier             : str
+          counter_offer_price  : float
+          additional_discount_requested : float
+          is_final_round       : bool
+          message              : str
+        }
+    """
+    rules = get_negotiation_rules(category)
+    if rules["status"] == "not_found":
+        return {"status": "error", "message": rules["message"]}
+
+    target_disc  = rules["target_discount_pct"]
+    step_pct     = rules["counter_offer_step_pct"]
+    max_rounds   = rules["max_negotiation_rounds"]
+
+    if current_discount_pct >= target_disc:
+        return {
+            "status":           "no_counter_needed",
+            "supplier":         supplier_name,
+            "category":         category,
+            "round_number":     round_number,
+            "current_price":    current_price,
+            "message":          (
+                f"{supplier_name} already at {current_discount_pct}% discount "
+                f"which meets target of {target_disc}%. No counter needed."
+            ),
+        }
+
+    round_bonus    = (round_number - 1) * 0.5
+    effective_step = step_pct + round_bonus
+    counter_price  = round(current_price * (1 - effective_step / 100), 2)
+    is_final       = round_number >= max_rounds
+
+    return {
+        "status":                        "counter_needed",
+        "supplier":                      supplier_name,
+        "category":                      category,
+        "round_number":                  round_number,
+        "current_price":                 current_price,
+        "counter_offer_price":           counter_price,
+        "additional_discount_requested": round(effective_step, 1),
+        "target_discount_pct":           target_disc,
+        "max_rounds":                    max_rounds,
+        "is_final_round":                is_final,
+        "message": (
+            f"Round {round_number}/{max_rounds}: Counter-offering {supplier_name} "
+            f"at ${counter_price}/unit (requesting {round(effective_step,1)}% off "
+            f"current ${current_price})."
+            + (" [FINAL ROUND]" if is_final else "")
+        ),
+    }

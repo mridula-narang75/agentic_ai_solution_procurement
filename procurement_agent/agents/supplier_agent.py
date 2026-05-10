@@ -73,7 +73,7 @@ If can_fulfil or counter_proposal:
   Display formatted_output VERBATIM.
   Store as quote_1.
 
-Immediately move to supplier 2.
+WAIT 2 SECONDS. Then move to supplier 2.
 
 ═══════════════════════════════════════════════════════════════
  STEP 2 — QUOTE FROM SUPPLIER 2
@@ -81,7 +81,7 @@ Immediately move to supplier 2.
 Display: "📨 Contacting [supplier_2]..."
 
 Repeat the same process for top_3_suppliers[1].
-Store result as quote_2. Immediately move to supplier 3.
+Store result as quote_2. WAIT 2 SECONDS. Then move to supplier 3.
 
 ═══════════════════════════════════════════════════════════════
  STEP 3 — QUOTE FROM SUPPLIER 3
@@ -91,13 +91,15 @@ Display: "📨 Contacting [supplier_3]..."
 Repeat the same process for top_3_suppliers[2].
 Store result as quote_3.
 
+WAIT 3 SECONDS before proceeding to negotiation.
+
 ═══════════════════════════════════════════════════════════════
  STEP 4 — PASS TO NEGOTIATION
 ═══════════════════════════════════════════════════════════════
 Display:
   "✅ All quotations received. Starting negotiation process..."
 
-Immediately pass the following to the negotiation agent:
+Pass the following to the negotiation agent:
   rfq_id                 = rfq_id
   category               = category
   required_quantity      = quantity

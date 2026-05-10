@@ -130,6 +130,10 @@ def check_capacity_and_delivery(
           message                 : str
         }
     """
+    # Type coercion — safe across all LLM providers
+    quantity = int(quantity)
+    required_delivery_days = int(required_delivery_days)
+
     row = _fetch_row(supplier_name, category)
     if not row:
         return {
@@ -263,6 +267,12 @@ def generate_quote(
           formatted_output       : str  — markdown table, print verbatim
         }
     """
+    # Type coercion — safe across all LLM providers
+    quantity = int(quantity)
+    required_delivery_days = int(required_delivery_days)
+    if quantity_to_offer is not None:
+        quantity_to_offer = int(quantity_to_offer)
+
     row = _fetch_row(supplier_name, category)
     if not row:
         return {
@@ -410,6 +420,11 @@ def revise_quote(
           formatted_output    : str
         }
     """
+    # Type coercion — safe across all LLM providers
+    quantity = int(quantity)
+    counter_offer_price = float(counter_offer_price)
+    round_number = int(round_number)
+
     row = _fetch_row(supplier_name, category)
     if not row:
         return {

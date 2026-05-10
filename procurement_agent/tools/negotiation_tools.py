@@ -174,6 +174,10 @@ def compare_quotes(
           formatted_output  : str   — markdown table, print verbatim
         }
     """
+    # Type coercion — safe across all LLM providers
+    required_delivery_days = int(required_delivery_days)
+    required_quantity = int(required_quantity)
+
     if not quotes:
         return {"status": "error", "message": "No quotes provided."}
 
@@ -200,10 +204,10 @@ def compare_quotes(
 
     scored = []
     for q in quotes:
-        price    = q["quoted_price_per_unit"]
-        delivery = q["delivery_days_committed"]
-        qty      = q["quantity_offered"]
-        discount = q.get("discount_applied_pct", 0)
+        price    = float(q["quoted_price_per_unit"])
+        delivery = int(q["delivery_days_committed"])
+        qty      = int(q["quantity_offered"])
+        discount = float(q.get("discount_applied_pct", 0))
 
         price_score    = (1 - price / max_price) * 100          if max_price    else 0
         delivery_score = (1 - delivery / max_delivery) * 100    if max_delivery else 0
@@ -357,6 +361,13 @@ def generate_award(
           formatted_output      : str  — markdown, print verbatim
         }
     """
+    # Type coercion — safe across all LLM providers
+    quantity = int(quantity)
+    final_price_per_unit = float(final_price_per_unit)
+    discount_applied_pct = int(discount_applied_pct)
+    delivery_days_committed = int(delivery_days_committed)
+    negotiation_rounds = int(negotiation_rounds)
+
     award_id          = f"AWD-{uuid.uuid4().hex[:8].upper()}"
     total_value       = round(final_price_per_unit * quantity, 2)
     award_date        = datetime.now().strftime("%Y-%m-%d")
@@ -407,6 +418,11 @@ def generate_award(
         "formatted_output":       "\n".join(lines),
     }
 
+
+# ══════════════════════════════════════════════════════════════════════
+# Tool 4 — generate_counter_offer
+# ══════════════════════════════════════════════════════════════════════
+
 def generate_counter_offer(
     category: str,
     supplier_name: str,
@@ -434,6 +450,11 @@ def generate_counter_offer(
           message              : str
         }
     """
+    # Type coercion — safe across all LLM providers
+    current_price = float(current_price)
+    current_discount_pct = float(current_discount_pct)
+    round_number = int(round_number)
+
     rules = get_negotiation_rules(category)
     if rules["status"] == "not_found":
         return {"status": "error", "message": rules["message"]}

@@ -111,7 +111,7 @@ def get_negotiation_rules(category: str) -> dict:
         "max_discount_pct":            row["max_discount_pct"],
         "min_acceptable_discount_pct": row["min_acceptable_discount_pct"],
         "price_tolerance_pct":         row["price_tolerance_pct"],
-        "max_negotiation_rounds":      row["max_negotiation_rounds"],
+        "max_negotiation_rounds":      1,
         "counter_offer_step_pct":      row["counter_offer_step_pct"],
         "delivery_tolerance_days":     row["delivery_tolerance_days"],
         "priority_weight_price":       row["priority_weight_price"],
@@ -430,72 +430,46 @@ def generate_counter_offer(
     current_discount_pct: float,
     round_number: int,
 ) -> dict:
-    """
-    Generates a structured counter-offer based on negotiation rules from DB.
-
-    Args:
-        category             : Item category (fetches rules from DB).
-        supplier_name        : Supplier to counter-offer.
-        current_price        : Supplier's current quoted price/unit.
-        current_discount_pct : Discount already applied.
-        round_number         : Current negotiation round (1, 2, or 3).
-
-    Returns:
-        {
-          status               : "counter_needed" | "no_counter_needed"
-          supplier             : str
-          counter_offer_price  : float
-          additional_discount_requested : float
-          is_final_round       : bool
-          message              : str
-        }
-    """
-    # Type coercion — safe across all LLM providers
     current_price = float(current_price)
     current_discount_pct = float(current_discount_pct)
-    round_number = int(round_number)
+    round_number = 1  # hard cap
 
     rules = get_negotiation_rules(category)
     if rules["status"] == "not_found":
         return {"status": "error", "message": rules["message"]}
 
-    target_disc  = rules["target_discount_pct"]
-    step_pct     = rules["counter_offer_step_pct"]
-    max_rounds   = rules["max_negotiation_rounds"]
+    target_disc = rules["target_discount_pct"]
+    step_pct    = rules["counter_offer_step_pct"]
 
     if current_discount_pct >= target_disc:
         return {
-            "status":           "no_counter_needed",
-            "supplier":         supplier_name,
-            "category":         category,
-            "round_number":     round_number,
-            "current_price":    current_price,
-            "message":          (
+            "status":        "no_counter_needed",
+            "supplier":      supplier_name,
+            "category":      category,
+            "round_number":  1,
+            "current_price": current_price,
+            "message": (
                 f"{supplier_name} already at {current_discount_pct}% discount "
                 f"which meets target of {target_disc}%. No counter needed."
             ),
         }
 
-    round_bonus    = (round_number - 1) * 0.5
-    effective_step = step_pct + round_bonus
-    counter_price  = round(current_price * (1 - effective_step / 100), 2)
-    is_final       = round_number >= max_rounds
+    counter_price = round(current_price * (1 - step_pct / 100), 2)
 
     return {
         "status":                        "counter_needed",
         "supplier":                      supplier_name,
         "category":                      category,
-        "round_number":                  round_number,
+        "round_number":                  1,
         "current_price":                 current_price,
         "counter_offer_price":           counter_price,
-        "additional_discount_requested": round(effective_step, 1),
+        "additional_discount_requested": round(step_pct, 1),
         "target_discount_pct":           target_disc,
-        "max_rounds":                    max_rounds,
-        "is_final_round":                is_final,
+        "max_rounds":                    1,       # LLM sees this
+        "is_final_round":                True,    # LLM sees this
         "message": (
-            f"Round {round_number}/{max_rounds}: Counter-offering {supplier_name} "
-            f"at ${counter_price}/unit (requesting {round(effective_step,1)}% off "
-            f"current ${current_price})."
-            + (" [FINAL ROUND]" if is_final else "")
+            f"Round 1/1: Counter-offering {supplier_name} "
+            f"at ${counter_price}/unit (requesting {round(step_pct, 1)}% off "
+            f"current ${current_price}). [FINAL ROUND]"
         ),
     }

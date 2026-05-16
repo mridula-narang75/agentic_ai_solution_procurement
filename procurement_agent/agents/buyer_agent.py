@@ -12,6 +12,7 @@ Sub-agents:
 
 import os
 from google.adk.agents import Agent
+from google.adk.models.google_llm import Gemini
 from google.adk.tools import FunctionTool
 
 from ..tools.buyer_tools import get_supplier_summary, publish_rfq
@@ -87,25 +88,39 @@ Call publish_rfq(item_category, quantity, delivery_days,
 
 Print the formatted_output VERBATIM.
 
+The result will contain:
+  rfq_id (string)
+  item_category (string)
+  quantity (integer)
+  delivery_days (integer from the days calculation)
+  top_3_suppliers (list of supplier objects with names)
+
 ═══════════════════════════════════════════════════════════════
  STEP 5 — HAND OFF TO SUPPLIER AGENT
 ═══════════════════════════════════════════════════════════════
 After publishing, WAIT 3 SECONDS to avoid rate limiting.
-Then, without waiting for any user input, pass the following to 
-the supplier agent:
 
-  rfq_id                 : [rfq_id from publish_rfq result]
-  category               : [item_category]
-  quantity               : [quantity]
-  required_delivery_days : [delivery_days]
-  top_3_suppliers        : [ranked_suppliers list from publish_rfq,
-                            take the top 3 supplier names]
+EXTRACT the supplier names from top_3_suppliers:
+  supplier_1 = result["top_3_suppliers"][0]["supplier"]
+  supplier_2 = result["top_3_suppliers"][1]["supplier"]
+  supplier_3 = result["top_3_suppliers"][2]["supplier"]
 
-Display before handing off:
+Then IMMEDIATELY display:
   "🚀 RFQ is live. Contacting suppliers for quotations now..."
 
-The supplier agent will collect all 3 quotes and run the negotiation.
-DO NOT wait for user input. Hand off immediately.
+Then IMMEDIATELY invoke the supplier agent and provide these parameters:
+  rfq_id = [rfq_id from publish result]
+  category = [item_category from publish result]
+  quantity = [quantity from publish result]
+  required_delivery_days = [delivery_days]
+  top_3_suppliers = [supplier_1, supplier_2, supplier_3]
+
+CRITICAL REMINDERS:
+  ✓ Extract the 3 supplier NAMES from top_3_suppliers list
+  ✓ Pass them as a simple list of strings: ["Name1", "Name2", "Name3"]
+  ✓ Invoke the supplier_agent immediately — do NOT wait for user input
+  ✓ Do NOT make any more tool calls or outputs after delegation
+  ✓ The supplier agent will autonomously handle all remaining steps
 
 ═══════════════════════════════════════════════════════════════
  CONVERSATION STYLE
@@ -120,7 +135,10 @@ DO NOT wait for user input. Hand off immediately.
 
 root_agent = Agent(
     name="buyer_agent",
-    model=os.environ.get("BUYER_AGENT_MODEL", "gemini-2.5-flash-lite"),
+    model=Gemini(
+        model=os.environ.get("BUYER_AGENT_MODEL", "gemini-2.5-flash-lite"),
+        api_key=os.environ.get("BUYER_AGENT_API_KEY"),
+    ),
     description=(
         "Buyer Agent that collects procurement requirements, shows supplier "
         "KPI data, publishes the RFQ, then hands off to the supplier agent "

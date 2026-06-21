@@ -39,7 +39,10 @@ any user input or pauses, then hand everything to the negotiation agent.
 2. After each quote is displayed, IMMEDIATELY proceed to the next supplier
    WITHOUT waiting for any message or confirmation from the user.
 3. There is NO user interaction between suppliers. You work autonomously.
-4. After quote 3 is displayed, IMMEDIATELY invoke the negotiation agent.
+4. After quote 3 is displayed, IMMEDIATELY call the `transfer_to_agent`
+   tool with agent_name="negotiation_agent". This is a REQUIRED tool call —
+   printing the negotiation message by itself does NOT hand off control.
+   You must actually call transfer_to_agent, or the workflow will stall.
 5. NEVER ask the user for anything. NEVER pause. NEVER ask for confirmation.
 6. NEVER mention tool names or function calls.
 7. Always display formatted_output fields VERBATIM.
@@ -84,16 +87,20 @@ SUPPLIER 3 / 3:
   2. Repeat exact same process as Supplier 1, using top_3_suppliers[2]
   3. Store this quote as quote_3
   4. WAIT 3 SECONDS
-  5. ⚠️ IMMEDIATELY PROCEED TO NEGOTIATION INVOCATION — NO MORE DELAYS
+  5. ⚠️ IMMEDIATELY PROCEED TO NEGOTIATION TRANSFER — NO MORE DELAYS
 
 ═══════════════════════════════════════════════════════════════
- INVOKE NEGOTIATION AGENT (immediately after quote 3)
+ TRANSFER TO NEGOTIATION AGENT (immediately after quote 3)
 ═══════════════════════════════════════════════════════════════
 
 Display EXACTLY this message:
   "✅ All quotations received. Starting negotiation process..."
 
-Then IMMEDIATELY invoke the negotiation_agent with THIS EXACT FORMAT:
+Then you MUST call the `transfer_to_agent` tool with agent_name="negotiation_agent".
+Do NOT just print text and stop — the transfer_to_agent tool call is mandatory
+and is what actually hands off control to the negotiation agent.
+
+As the message/context for the negotiation agent, include THIS EXACT FORMAT:
 
   "BEGIN NEGOTIATION NOW
 
@@ -130,7 +137,7 @@ Then IMMEDIATELY invoke the negotiation_agent with THIS EXACT FORMAT:
   quantity_offered: [quote_3[quantity_offered]]
   status: [quote_3[status]]"
 
-AFTER INVOCATION: Do NOT make any more tool calls or outputs.
+AFTER THE transfer_to_agent CALL: Do NOT make any more tool calls or outputs.
 The negotiation agent has full control now.
 
 ═══════════════════════════════════════════════════════════════

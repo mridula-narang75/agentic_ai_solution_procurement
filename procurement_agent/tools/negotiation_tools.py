@@ -12,10 +12,13 @@ Columns:
     priority_weight_delivery, priority_weight_quantity,
     auto_award_threshold_score, walkaway_price_premium_pct
 
-Three tools exposed to the negotiation agent:
+Tools exposed to the negotiation agent:
     get_negotiation_rules()   — fetch rules for a category from DB
     compare_quotes()          — score and rank all quotes
+    generate_counter_offer()  — produce a structured counter-offer
     generate_award()          — produce final award summary
+    run_negotiation_round()   — compare + counter-offer + revise + re-compare,
+                                all in ONE Python call
 """
 
 import os
@@ -25,6 +28,10 @@ import math
 from contextlib import contextmanager
 from datetime import datetime
 from tabulate import tabulate
+
+# NOTE: adjust this import path/module name to match wherever revise_quote
+# actually lives in your project (e.g. supplier_db, supplier_tools, etc.)
+from .supplier_tools import revise_quote
 
 _TOOLS_DIR = os.path.dirname(__file__)
 _AGENT_DIR = os.path.dirname(_TOOLS_DIR)
@@ -472,4 +479,134 @@ def generate_counter_offer(
             f"at ${counter_price}/unit (requesting {round(step_pct, 1)}% off "
             f"current ${current_price}). [FINAL ROUND]"
         ),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Tool 5 — run_negotiation_round
+# ══════════════════════════════════════════════════════════════════════
+
+def run_negotiation_round(
+    rfq_id: str,
+    category: str,
+    quotes: list[dict],
+    required_delivery_days: int,
+    required_quantity: int,
+) -> dict:
+    """
+    Runs ONE full negotiation round in a single Python call:
+    compare_quotes -> (if needed) generate_counter_offer + revise_quote for
+    each counter-target supplier -> re-compare with updated quotes.
+
+    Replaces what would otherwise be 1 (compare) + 2×N (counter+revise per
+    supplier) + 1 (re-compare) separate LLM tool calls with just 1 call.
+
+    Args:
+        rfq_id                  : Original RFQ reference.
+        category                : Item category.
+        quotes                  : List of 3 quote dicts (supplier, quote_id,
+                                   quoted_price_per_unit, discount_applied_pct,
+                                   delivery_days_committed, quantity_offered,
+                                   status).
+        required_delivery_days  : Buyer's required delivery window.
+        required_quantity       : Original quantity requested.
+
+    Returns:
+        {
+          "recommendation":   "auto_award" | "counter_offer" | "walkaway_all"
+          "best_quote":       dict   — winning quote after this round
+          "updated_quotes":   list   — quotes list with any revisions applied
+          "formatted_output": str    — concatenated comparison + counter-offer tables
+        }
+    """
+    required_delivery_days = int(required_delivery_days)
+    required_quantity = int(required_quantity)
+
+    chunks = []
+
+    # Step 1 — initial comparison
+    first_compare = compare_quotes(
+        category=category,
+        quotes=quotes,
+        required_delivery_days=required_delivery_days,
+        required_quantity=required_quantity,
+    )
+    if first_compare["status"] != "success":
+        return {"status": "error", "message": first_compare.get("message")}
+
+    chunks.append(first_compare["formatted_output"])
+    recommendation = first_compare["recommendation"]
+
+    if recommendation != "counter_offer":
+        # auto_award or walkaway_all — nothing more to do this round
+        return {
+            "status":           "success",
+            "recommendation":   recommendation,
+            "best_quote":       first_compare["best_quote"],
+            "updated_quotes":   quotes,
+            "formatted_output": "\n\n".join(chunks),
+        }
+
+    # Step 2 — counter-offer + revise for each counter target, in Python
+    counter_targets = set(first_compare["counter_targets"])
+    updated_quotes = []
+
+    for q in quotes:
+        if q["supplier"] not in counter_targets:
+            updated_quotes.append(q)
+            continue
+
+        counter_result = generate_counter_offer(
+            category=category,
+            supplier_name=q["supplier"],
+            current_price=q["quoted_price_per_unit"],
+            current_discount_pct=q["discount_applied_pct"],
+            round_number=1,
+        )
+
+        if counter_result.get("status") == "no_counter_needed":
+            chunks.append(counter_result["message"])
+            updated_quotes.append(q)
+            continue
+
+        chunks.append(
+            f"Counter-offer → {q['supplier']}: "
+            f"${counter_result['counter_offer_price']}/unit [FINAL]"
+        )
+
+        revised = revise_quote(
+            supplier_name=q["supplier"],
+            category=category,
+            quantity=required_quantity,
+            rfq_id=rfq_id,
+            original_quote_id=q["quote_id"],
+            counter_offer_price=counter_result["counter_offer_price"],
+            round_number=1,
+        )
+        chunks.append(revised["formatted_output"])
+
+        updated_quotes.append({
+            **q,
+            "quoted_price_per_unit": revised["quoted_price_per_unit"],
+            "discount_applied_pct":  revised["discount_applied_pct"],
+            "quote_id":              revised["quote_id"],
+            "delivery_days_committed": revised["delivery_days_committed"],
+            "status":                revised["status"],
+        })
+
+    # Step 3 — re-compare with updated quotes
+    final_compare = compare_quotes(
+        category=category,
+        quotes=updated_quotes,
+        required_delivery_days=required_delivery_days,
+        required_quantity=required_quantity,
+    )
+    chunks.append(final_compare["formatted_output"])
+
+    return {
+        "status":           "success",
+        "recommendation":   final_compare["recommendation"],
+        "best_quote":       final_compare["best_quote"],
+        "updated_quotes":   updated_quotes,
+        "formatted_output": "\n\n".join(chunks),
     }

@@ -1,5 +1,5 @@
 """
-procurement_agent/tools/supplier_db.py
+procurement_agent/tools/supplier_tools.py
 ───────────────────────────────────────
 SQLite access layer for suppliers.db (supplier catalog).
 
@@ -15,9 +15,11 @@ Columns:
     production_capacity_units_month  — monthly production capacity
     delivery_feasibility             — High / Medium / Low
 
-Two tools exposed to the supplier agent:
+Tools exposed to the supplier agent:
     check_capacity_and_delivery()  — reasons over qty + timeline
     generate_quote()               — produces final structured quotation
+    revise_quote()                 — supplier responds to a counter-offer
+    collect_all_quotes()           — runs the full 3-supplier loop in ONE call
 """
 
 import os
@@ -383,6 +385,11 @@ def generate_quote(
         "formatted_output":     "\n".join(lines),
     }
 
+
+# ══════════════════════════════════════════════════════════════════════
+# Tool 3 — revise_quote
+# ══════════════════════════════════════════════════════════════════════
+
 def revise_quote(
     supplier_name: str,
     category: str,
@@ -508,4 +515,74 @@ def revise_quote(
         "rfq_id":                  rfq_id,
         "remarks":                 remarks,
         "formatted_output":        "\n".join(lines),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Tool 4 — collect_all_quotes
+# ══════════════════════════════════════════════════════════════════════
+
+def collect_all_quotes(
+    rfq_id: str,
+    category: str,
+    quantity: int,
+    required_delivery_days: int,
+    top_3_suppliers: list[str],
+) -> dict:
+    """
+    Runs the full supplier-collection loop in ONE Python call instead of
+    letting the LLM make 2 tool calls (check_capacity_and_delivery +
+    generate_quote) per supplier. Cuts ~6 tool-call round-trips down to 1.
+
+    Args:
+        rfq_id                 : RFQ identifier.
+        category                : Item category.
+        quantity                : Units requested.
+        required_delivery_days : Buyer's required delivery window.
+        top_3_suppliers        : List of exactly 3 supplier names.
+
+    Returns:
+        {
+          "quotes":           [quote_1, quote_2, quote_3],  # None if cannot_fulfil
+          "formatted_output": "<concatenated per-supplier display text>"
+        }
+    """
+    quantity = int(quantity)
+    required_delivery_days = int(required_delivery_days)
+
+    quotes = []
+    formatted_chunks = []
+
+    for supplier_name in top_3_suppliers:
+        chunk = f"📨 Contacting {supplier_name}...\n"
+
+        capacity_result = check_capacity_and_delivery(
+            supplier_name=supplier_name,
+            category=category,
+            quantity=quantity,
+            required_delivery_days=required_delivery_days,
+        )
+
+        if capacity_result.get("status") in ("cannot_fulfil", "not_found"):
+            chunk += f"❌ {supplier_name} cannot fulfil this RFQ. {capacity_result.get('message', '')}\n"
+            quotes.append(None)
+            formatted_chunks.append(chunk)
+            continue
+
+        quote_result = generate_quote(
+            supplier_name=supplier_name,
+            category=category,
+            quantity=quantity,
+            rfq_id=rfq_id,
+            required_delivery_days=required_delivery_days,
+            quantity_to_offer=None,
+        )
+
+        chunk += quote_result.get("formatted_output", "")
+        formatted_chunks.append(chunk)
+        quotes.append(quote_result)
+
+    return {
+        "quotes": quotes,
+        "formatted_output": "\n\n".join(formatted_chunks),
     }

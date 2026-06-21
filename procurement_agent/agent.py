@@ -14,9 +14,8 @@ from dotenv import load_dotenv
 # Load environment variables once at startup
 load_dotenv()
 
-# Set the buyer agent API key as the main API key
-# (sub-agents will use the same context)
-os.environ["GOOGLE_API_KEY"] = os.environ.get("BUYER_AGENT_API_KEY", "")
+# Each agent uses its own explicit API key from environment
+# No global GOOGLE_API_KEY to avoid sub-agent inheritance conflicts
 
 from .agents.buyer_agent import root_agent
 

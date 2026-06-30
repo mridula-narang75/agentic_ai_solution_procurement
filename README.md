@@ -40,7 +40,7 @@ procurement_agent/
 
 ---
 
-## How to Run This Project (Step-by-Step, No Coding Experience Needed)
+## How to Run This Project 
 
 ### Step 1: Install Python
 

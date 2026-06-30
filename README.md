@@ -88,13 +88,13 @@ This project uses Google's Gemini AI model, so you need a free API key from Goog
 3. Click **Create API Key**
 4. Copy the key that's generated (it's a long string of letters and numbers)
 
-You can use the same key for everything, or create separate keys for each agent (recommended if you plan to use this a lot, since it avoids hitting usage limits).
+Create separate keys for each agent (recommended if you plan to use this a lot, since it avoids hitting usage limits).
 
 ### Step 6: Add Your API Key to the `.env` File
 
 The project uses a file called `.env` to store your secret API key safely (this file is never shared or uploaded anywhere).
 
-1. In the main project folder, find the file named `.env.example` (or create a new file named exactly `.env` if it doesn't exist)
+1. In the main project folder, find the file named `.env` (or create a new file named exactly `.env` if it doesn't exist)
 2. Open it with any text editor (Notepad on Windows, TextEdit on Mac)
 3. Paste in the following, replacing `your_key_here` with the key you copied in Step 5:
 
@@ -103,13 +103,8 @@ GOOGLE_GENAI_USE_VERTEXAI=FALSE
 GOOGLE_API_KEY=your_key_here
 
 BUYER_AGENT_API_KEY=your_key_here
-BUYER_AGENT_MODEL=gemini-2.5-flash-lite
-
 SUPPLIER_AGENT_API_KEY=your_key_here
-SUPPLIER_AGENT_MODEL=gemini-2.5-flash-lite
-
 NEGOTIATION_AGENT_API_KEY=your_key_here
-NEGOTIATION_AGENT_MODEL=gemini-2.5-flash-lite
 ```
 
 4. Save the file. Make sure it's named exactly `.env` (not `.env.txt`).
